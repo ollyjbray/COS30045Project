@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Preventable Mortality Trends</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: black;
+      shape-rendering: crispEdges;
+    }
+    .line {
+      fill: none;
+      stroke-width: 2px;
+    }
+    .label {
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+<svg width="960" height="500"></svg>
+<script>
+  // Load the CSV data
+  d3.csv("preventable_mortality_cleaned (3).csv", function(d) {
+    return {
+      year: d3.timeParse("%Y")(d.Year),
+      country: d.Country,
+      value: +d.Value
+    };
+  }).then(function(data) {
+    // Filter data for visualization
+    const sumstat = d3.group(data, d => d.country);
+
+
+    const margin = {top: 10, right: 30, bottom: 30, left: 60},
+      width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+    // Append the svg object to the body of the page
+    const svg = d3.select("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    // Add X axis
+    const x = d3.scaleTime()
+      .domain(d3.extent(data, d => d.year))
+      .range([0, width]);
+    svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x));
+
+    // Add Y axis
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.value)])
+      .range([height, 0]);
+    svg.append("g")
+      .call(d3.axisLeft(y));
+
+    // Color palette
+    const color = d3.scaleOrdinal()
+      .domain(Array.from(sumstat.keys()))
+      .range(d3.schemeCategory10);
+
+    // Define the line generator
+    const line = d3.line()
+      .x(d => x(d.year))
+      .y(d => y(d.value));
+
+    // Draw the line
+    const lines = svg.selectAll(".line")
+      .data(sumstat)
+      .join("path")
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", d => color(d[0]))
+        .attr("stroke-width", 1.5)
+        .attr("d", d => line(d[1]));
+
+    // Add labels
+    svg.selectAll(".label")
+      .data(sumstat)
+      .enter()
+      .append("text")
+        .attr("class", "label")
+        .attr("transform", function(d) {
+          const lastPoint = d[1][d[1].length - 1];  // Last point of each country's line
+          return `translate(${x(lastPoint.year)}, ${y(lastPoint.value)})`;
+        })
+        .attr("x", 5)  // Shift the text a little bit right
+        .attr("dy", ".35em")  // Vertically center text
+        .attr("text-anchor", "start")
+        .text(d => d[0])
+        .style("fill", d => color(d[0]))
+        .each(function(d) {
+          // Adjust position if too close to the right edge
+          const bbox = this.getBBox();
+          const rightEdge = x(d[1][d[1].length - 1].year) + bbox.width;
+          if (rightEdge > width) {
+            d3.select(this).attr("x", -5 - bbox.width);
+            d3.select(this).attr("text-anchor", "end");
+          }
+        });
+  });
+</script>
+</body>
+</html>
