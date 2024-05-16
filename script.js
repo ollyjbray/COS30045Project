@@ -1,101 +1,109 @@
 function init() {
-    var w = 1300;
-    var h = 500;
-    var margin = { top: 20, right: 20, bottom: 50, left: 80 };
+    // set up the SVG canvas dimensions
+    const margin = { top: 50, right: 100, bottom: 100, left: 150 },
+        w = 1000 - margin.left - margin.right,
+        h = 800 - margin.top - margin.bottom; // increased height for larger boxes
 
-    var svg = d3.select("#chart").append("svg")
-                .attr("width", w + margin.left + margin.right)
-                .attr("height", h + margin.top + margin.bottom)
-                .append("g")
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    d3.csv("health_expenditure_cleaned.csv").then(data => { // importing csv data
+        data.forEach(d => {
+            d.Year = +d.Year;
+            d.Value = +d.Value;
+        });
 
-    var xScale = d3.scaleBand()
-                   .range([0, w - margin.left - margin.right])
-                   .padding(0.1);
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", w + margin.left + margin.right + 100)
+            .attr("height", h + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    var yScale = d3.scaleLinear()
-                   .range([h - margin.top - margin.bottom, 0]);
+        // create the scales
+        const xScale = d3.scaleBand()
+            .range([0, w])
+            .domain(data.map(d => d.Year))
+            .padding(0.1); // reduced padding for larger boxes
 
-    // create colour scale
-    var colorScale = d3.scaleLinear()
-                       .range(["lightgreen", "darkgreen"]);
+        const yScale = d3.scaleBand()
+            .range([h, 0])
+            .domain(data.map(d => d.Country))
+            .padding(0.1); // reduced padding for larger boxes
 
-    var xAxisGroup = svg.append("g")
-                        .attr("class", "x axis")
-                        .attr("transform", "translate(0," + (h - margin.top - margin.bottom) + ")");
+        const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
+            .domain([0, d3.max(data, d => d.Value)]);
 
-    var yAxisGroup = svg.append("g")
-                        .attr("class", "y axis");
-
-    var fullData, globalMaxValue, currentYear, lastSortFunc;
-
-    d3.csv("health_social_employment_cleaned.csv", function(d) {
-        d.Value = +d.Value;
-        d.Year = +d.Year;
-        return d;
-    }).then(function(data) {
-        fullData = data;
-        globalMaxValue = d3.max(data, function(d) { return d.Value; });
-        currentYear = +d3.select("#yearSlider").property("value");
-        colorScale.domain([0, globalMaxValue]);
-        updateChart(); 
-    });
-
-    function updateChart() {
-        svg.selectAll("rect").remove(); // existing bars are removed
-
-        var yearData = fullData.filter(d => d.Year === currentYear);
-
-        if (lastSortFunc) {
-            yearData = lastSortFunc(yearData);
-        }
-
-        xScale.domain(yearData.map(d => d.Country));
-        yScale.domain([0, globalMaxValue]);
-
-        xAxisGroup.call(d3.axisBottom(xScale))
-            .selectAll("text")
-            .style("text-anchor", "end")
-            .attr("dx", "-.8em")
-            .attr("dy", ".15em")
-            .attr("transform", "rotate(-65)");
-
-        yAxisGroup.call(d3.axisLeft(yScale));
-
-        var bars = svg.selectAll("rect")
-                      .data(yearData, d => d.Country);
-
-        bars.enter()
+        // append the rectangles for the heatmap
+        svg.selectAll()
+            .data(data, d => d.Country + ':' + d.Year)
+            .enter()
             .append("rect")
-            .attr("x", d => xScale(d.Country))
-            .attr("y", d => yScale(d.Value))
+            .attr("x", d => xScale(d.Year))
+            .attr("y", d => yScale(d.Country))
             .attr("width", xScale.bandwidth())
-            .attr("height", d => h - margin.top - margin.bottom - yScale(d.Value))
-            .attr("fill", d => colorScale(d.Value))
-            .on("mouseover", function(event, d) {
-                d3.select(this).transition().duration(100).style("fill", "orange");
-            })
-            .on("mouseout", function(event, d) {
-                d3.select(this).transition().duration(100).style("fill", colorScale(d.Value));
-            });
-    }
+            .attr("height", yScale.bandwidth())
+            .style("fill", d => colorScale(d.Value));
 
-    function applySortAndFilter(sortFunc) {
-        lastSortFunc = sortFunc; // store the last sort function
-        updateChart();
-    }
+        // add the x-axis
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", `translate(0, ${h})`)
+            .call(d3.axisBottom(xScale).tickSize(0))
+            .selectAll("text")
+            .style("font-family", "Oswald, sans-serif")
+            .style("font-size", "14px");
 
-    // button and slider event handlers
-    d3.select("#allCountries").on("click", () => { lastSortFunc = null; updateChart(); });
-    d3.select("#top10").on("click", () => applySortAndFilter(data => data.sort((a, b) => b.Value - a.Value).slice(0, 10)));
-    d3.select("#bottom10").on("click", () => applySortAndFilter(data => data.sort((a, b) => a.Value - b.Value).slice(0, 10)));
-    d3.select("#sortAscending").on("click", () => applySortAndFilter(data => data.sort((a, b) => a.Value - b.Value)));
-    d3.select("#sortDescending").on("click", () => applySortAndFilter(data => data.sort((a, b) => b.Value - a.Value)));
+        // add the y-axis
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(d3.axisLeft(yScale).tickSize(0))
+            .selectAll("text")
+            .style("font-family", "Oswald, sans-serif")
+            .style("font-size", "14px");
 
-    d3.select("#yearSlider").on("input", function() {
-        currentYear = +this.value;
-        d3.select("#yearLabel").text("Year: " + currentYear);
-        updateChart(); // reapply last sort function
+        // add labels to the heatmap cells
+        // svg.selectAll(".text")
+        //     .data(data, d => d.Country + ':' + d.Year)
+        //     .enter()
+        //     .append("text")
+        //     .attr("x", d => xScale(d.Year) + xScale.bandwidth() / 2)
+        //     .attr("y", d => yScale(d.Country) + yScale.bandwidth() / 2)
+        //     .attr("dy", ".35em")
+        //     .attr("text-anchor", "middle")
+        //     .text(d => d.Value.toFixed(2))
+        //     .style("fill", "black")
+        //     .style("font-size", "12px")
+        //     .style("font-family", "Oswald, sans-serif")
+
+        // add color key/legend
+        const legendWidth = 20;
+        const legendHeight = h;
+        const legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(${w + 40}, 0)`);
+
+        const legendScale = d3.scaleLinear()
+            .range([legendHeight, 0])
+            .domain([0, d3.max(data, d => d.Value)]);
+
+        const numBoxes = 100; // number of color boxes in the legend
+        legend.selectAll("rect")
+            .data(d3.range(numBoxes), d => d)
+            .enter()
+            .append("rect")
+            .attr("y", (i) => i * (legendHeight / numBoxes))
+            .attr("height", legendHeight / numBoxes)
+            .attr("width", legendWidth)
+            .attr("fill", d => colorScale(legendScale.invert(d * (legendHeight / numBoxes))));
+
+        // add legend axis
+        const legendAxis = d3.axisRight(legendScale)
+            .ticks(6)
+            .tickFormat(d => d + "%")
+
+        legend.append("g")
+            .attr("transform", `translate(${legendWidth}, 0)`)
+            .call(legendAxis)
+            .selectAll("text")
+            .style("font-family", "Oswald, sans-serif");
     });
 }
 
