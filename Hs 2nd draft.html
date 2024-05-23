@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Data Visualization">
+  <title>Preventable Mortality Trends</title>
+  <meta name="author" content="BoRui Deng">
+  <meta name="keywords" content="HTML, CSS, D3">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: black;
+      shape-rendering: crispEdges;
+    }
+    .line {
+      fill: none;
+      stroke-width: 2px;
+    }
+    .label {
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+    }
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      width: auto;
+      height: auto;
+      padding: 5px;
+      font: 12px sans-serif;
+      background: lightsteelblue;
+      border: 0px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+    .title-container {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title-container">
+    <h1>The number of deaths across different countries over various periods.</h1>
+  </div>
+  <div id="tooltip" class="tooltip" style="opacity:0;"></div>
+  <svg width="1000" height="500"></svg>
+  <script>
+    // Load the CSV data
+    d3.csv("preventable_mortality_cleaned (3).csv", function(d) {
+      return {
+        year: d3.timeParse("%Y")(d.Year), // Parses the year string into a date object
+        country: d.Country, // Uses country name
+        value: +d.Value // Converts value to number
+      };
+    }).then(function(data) {
+      // Filter data for visualization
+      const sumstat = d3.group(data, d => d.country); // Group the data by country
+
+      // Define the width and height of the chart
+      const margin = {top: 10, right: 70, bottom: 30, left: 60},
+            width = 1000 - margin.left - margin.right,
+            height = 500 - margin.top - margin.bottom;
+
+      // Append the svg object to the body of the page
+      const svg = d3.select("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g") // Svg group element
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // Add X axis
+      const x = d3.scaleTime()
+        .domain(d3.extent(data, d => d.year)) // Compute the minimum and maximum values of the years in the dataset
+        .range([0, width]);
+      svg.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x)); // Add X axis
+
+      // Add Y axis
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value)])
+        .range([height, 0]);
+      svg.append("g")
+        .call(d3.axisLeft(y));
+
+      // Color palette
+      const color = d3.scaleOrdinal()
+        .domain(Array.from(sumstat.keys())) // Group by country
+        .range(d3.schemeCategory10); // Default 10 colors
+
+      // Define the line generator
+      const line = d3.line()
+        .x(d => x(d.year))
+        .y(d => y(d.value));
+
+      // Draw the lines
+      svg.selectAll(".line")
+        .data(sumstat)
+        .join("path")
+          .attr("class", "line")
+          .attr("fill", "none")
+          .attr("stroke", d => color(d[0]))
+          .attr("stroke-width", 1.5)
+          .attr("d", d => line(d[1]));
+
+      // Add labels at the far right end
+      svg.selectAll(".label")
+        .data(sumstat)
+        .enter()
+        .append("text")
+          .attr("class", "label")
+          .attr("transform", function(d) {
+            const lastYear = d3.max(data, d => d.year); // Find the last year in the data
+            const lastPoint = d[1].find(point => point.year.getFullYear() === lastYear.getFullYear()); // Find the data point for the country in the last year
+            return `translate(${x(lastYear)}, ${y(lastPoint.value)})`;
+          })
+          .attr("x", 5) // Shift the text a little bit right
+          .attr("dy", ".35em") // Vertically center text
+          .attr("text-anchor", "start")
+          .text(d => d[0])
+          .style("fill", d => color(d[0]));
+
+      // Add tooltips
+      const tooltip = d3.select("#tooltip");
+
+      svg.selectAll(".line-point")
+        .data(data) // Bind data
+        .enter()
+        .append("circle")
+          .attr("class", "line-point")
+          .attr("cx", d => x(d.year))
+          .attr("cy", d => y(d.value))
+          .attr("r", 3)
+          .attr("fill", d => color(d.country))
+          .on("mouseover", function(event, d) {
+            tooltip.transition()
+              .duration(200)
+              .style("opacity", .9); // Set tooltip opacity
+            tooltip.html("Country: " + d.country + "<br/>Year: " + d3.timeFormat("%Y")(d.year) + "<br/>Value: " + d.value)
+              .style("left", (event.pageX + 5) + "px")
+              .style("top", (event.pageY - 28) + "px");
+          })
+          .on("mouseout", function(d) {
+            tooltip.transition()
+              .duration(500)
+              .style("opacity", 0); // Hide tooltip
+          });
+    });
+  </script>
+  <footer style="color: gray">
+    COS30045 Data Visualisation<br>
+    BoRui Deng 104337579
+  </footer>
+</body>
+</html>
