@@ -1,7 +1,7 @@
 function init() {
     var w = 1300;
     var h = 500;
-    var margin = { top: 20, right: 20, bottom: 50, left: 80 };
+    var margin = { top: 5, right: 10, bottom: 40, left: 40 };
 
     var svg = d3.select("#chart").append("svg")
                 .attr("width", w + margin.left + margin.right)
