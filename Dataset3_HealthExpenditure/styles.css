@@ -26,12 +26,32 @@ h1 {
     font-family: "Oswald", sans-serif;
 }
 
-#chart {
-    width: 80%;
-    height: 80%;
+#container {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 90%;
+    height: 80%;
+}
+
+#chart {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#text-box {
+    width: 20%;
+    padding: 10px;
+    background-color: #dbe8da;
+    border: solid 2px #373737;
+    border-radius: 5px;
+    font-family: "Oswald", sans-serif;
+    font-size: 18px;
+    color: #373737;
+    display: flex;
+    align-items: center;
 }
 
 footer {
