@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Data Visualization">
+  <title>Avoidable Mortality</title>
+  <meta name="author" content="BoRui Deng">
+  <meta name="keywords" content="HTML, CSS, D3">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+  <div class="title-container">
+    <h1>Avoidable Mortality</h1>
+  </div>
+  <div id="filters">
+    <label for="countryFilter">Select Country:</label>
+    <select id="countryFilter">
+      <option value="all">All Countries</option>
+    </select>
+    <label for="yearRange">Select Year Range:</label>
+    <input type="range" id="yearRange" min="2000" max="2020" value="2020" step="1" />
+    <label id="yearLabel">Year: 2020</label>
+  </div>
+  <div id="tooltip" class="tooltip" style="opacity:0;"></div>
+  <div id="legend"></div>
+  <svg width="1000" height="500"></svg>
+  <script src="script.js"></script>
+  <footer style="color: gray">
+    COS30045 Data Visualisation<br>
+    BoRui Deng 104337579
+  </footer>
+</body>
+</html>
